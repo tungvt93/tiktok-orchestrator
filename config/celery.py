@@ -20,4 +20,8 @@ app.conf.beat_schedule = {
         "task": "apps.core.tasks.reset.reset_gemini_usage_counters",
         "schedule": crontab(hour=0, minute=3),
     },
+    "cleanup-r2-daily": {
+        "task": "apps.core.tasks.reset.cleanup_r2_daily",
+        "schedule": crontab(hour=0, minute=6),
+    },
 }

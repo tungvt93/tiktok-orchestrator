@@ -22,7 +22,7 @@ def upload_to_vps(vps, profile_name, video_url):
             headers["Authorization"] = f"Bearer {vps.api_key}"
 
         response = requests.post(
-            f"{vps.api_endpoint}/upload",
+            f"{vps.api_endpoint}/api/upload-profile",
             json={"profile_name": profile_name, "video_url": video_url},
             headers=headers,
             timeout=30,

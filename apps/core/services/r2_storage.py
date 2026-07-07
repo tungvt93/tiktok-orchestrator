@@ -75,3 +75,42 @@ def upload_clip(file_path: str, bucket: str | None = None, key_prefix: str = "cl
 
     logger.info("Upload complete. URL: %s", url)
     return url
+
+
+def cleanup_old_clips(bucket: str | None = None, key_prefix: str = "clips") -> int:
+    """
+    Delete all clip objects from R2 under the given prefix.
+
+    Runs daily via Celery Beat to keep storage usage low.
+
+    Args:
+        bucket: R2 bucket name (defaults to settings.R2_BUCKET_NAME).
+        key_prefix: Prefix (folder) to clean up.
+
+    Returns:
+        Number of objects deleted.
+    """
+    if bucket is None:
+        bucket = getattr(settings, "R2_BUCKET_NAME", "tiktok-clips")
+
+    r2 = _get_r2_client()
+    deleted = 0
+
+    paginator = r2.get_paginator("list_objects_v2")
+    pages = paginator.paginate(Bucket=bucket, Prefix=f"{key_prefix}/")
+
+    for page in pages:
+        objects = page.get("Contents", [])
+        if not objects:
+            continue
+
+        keys = [{"Key": obj["Key"]} for obj in objects]
+        r2.delete_objects(
+            Bucket=bucket,
+            Delete={"Objects": keys, "Quiet": True},
+        )
+        deleted += len(keys)
+        logger.info("Deleted %d objects from R2 %s/%s/", len(keys), bucket, key_prefix)
+
+    logger.info("R2 cleanup complete: %d total objects deleted from %s/%s/", deleted, bucket, key_prefix)
+    return deleted
