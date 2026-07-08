@@ -31,7 +31,17 @@ def webhook_video(request):
     data = serializer.validated_data
     channel_id = data["channel_id"]
     video_id = data["video_id"]
-    is_short = data.get("is_short", False)
+    
+    # Auto-detect is_short by checking YouTube's URL redirect behavior
+    # YouTube returns 200 for shorts and 303 redirect for long videos.
+    try:
+        import requests
+        check_url = f"https://www.youtube.com/shorts/{video_id}"
+        resp = requests.head(check_url, allow_redirects=False, timeout=5)
+        is_short = (resp.status_code == 200)
+    except Exception:
+        # Fallback to payload if network fails
+        is_short = data.get("is_short", False)
 
     # Build video_url: use explicit URL if provided, otherwise construct from type
     video_url = data.get("video_url", "")

@@ -63,9 +63,6 @@ def split_and_distribute_video(self, video_id: str):
         highlights = analyze_video_for_highlights(
             video_path=downloaded_path,
             api_key=gemini_key.api_key,
-            num_clips=5,
-            min_clip_duration=8.0,
-            max_clip_duration=10.0,
         )
 
         if not highlights:

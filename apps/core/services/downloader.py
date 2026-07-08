@@ -34,7 +34,7 @@ def download_video(url: str, output_dir: Path | None = None) -> str:
     output_template = str(target_dir / f"yt_{timestamp}_%(id)s.%(ext)s")
 
     ydl_opts = {
-        "format": "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+        "format": "bestvideo+bestaudio/best",
         "outtmpl": output_template,
         "quiet": True,
         "no_warnings": True,

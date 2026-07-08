@@ -2,13 +2,35 @@
 from django.contrib import admin
 
 from apps.core.models import Topic, VPS, YouTubeChannel, TikTokProfile, Video, GeminiAPIKey
+from django.utils.html import format_html
+from django.urls import reverse
+from django.contrib.admin.actions import delete_selected
+
+# Rename global delete_selected action to Vietnamese
+def custom_delete_selected(modeladmin, request, queryset):
+    return delete_selected(modeladmin, request, queryset)
+custom_delete_selected.short_description = "❌ Xóa các bản ghi đã chọn (Hàng loạt)"
+
+admin.site.disable_action("delete_selected")
+admin.site.add_action(custom_delete_selected, "delete_selected")
+
+class DeleteActionMixin:
+    @admin.display(description="Action")
+    def delete_button(self, obj):
+        if not obj.pk:
+            return ""
+        url = reverse(f"admin:{obj._meta.app_label}_{obj._meta.model_name}_delete", args=[obj.pk])
+        return format_html(
+            '<a class="button" style="background-color: #ba2121; color: white; padding: 4px 8px; border-radius: 4px; text-decoration: none;" href="{}">Xóa</a>', 
+            url
+        )
 
 
 # ── Topic ──────────────────────────────────────────────────────────────
 
 @admin.register(Topic)
-class TopicAdmin(admin.ModelAdmin):
-    list_display = ["name", "slug", "channel_count", "profile_count", "created_at"]
+class TopicAdmin(DeleteActionMixin, admin.ModelAdmin):
+    list_display = ["name", "slug", "channel_count", "profile_count", "created_at", "delete_button"]
     search_fields = ["name", "slug"]
     prepopulated_fields = {"slug": ("name",)}
 
@@ -24,8 +46,8 @@ class TopicAdmin(admin.ModelAdmin):
 # ── YouTubeChannel ─────────────────────────────────────────────────────
 
 @admin.register(YouTubeChannel)
-class YouTubeChannelAdmin(admin.ModelAdmin):
-    list_display = ["name", "channel_id", "topic", "is_active", "video_count", "created_at"]
+class YouTubeChannelAdmin(DeleteActionMixin, admin.ModelAdmin):
+    list_display = ["name", "channel_id", "topic", "is_active", "video_count", "created_at", "delete_button"]
     list_filter = ["is_active", "topic"]
     search_fields = ["name", "channel_id"]
     list_editable = ["topic", "is_active"]
@@ -39,8 +61,8 @@ class YouTubeChannelAdmin(admin.ModelAdmin):
 # ── VPS ────────────────────────────────────────────────────────────────
 
 @admin.register(VPS)
-class VPSAdmin(admin.ModelAdmin):
-    list_display = ["name", "host", "is_active", "profile_count", "created_at"]
+class VPSAdmin(DeleteActionMixin, admin.ModelAdmin):
+    list_display = ["name", "host", "is_active", "profile_count", "created_at", "delete_button"]
     list_filter = ["is_active"]
     search_fields = ["name", "host", "api_endpoint"]
     list_editable = ["is_active"]
@@ -53,11 +75,11 @@ class VPSAdmin(admin.ModelAdmin):
 # ── TikTokProfile ──────────────────────────────────────────────────────
 
 @admin.register(TikTokProfile)
-class TikTokProfileAdmin(admin.ModelAdmin):
+class TikTokProfileAdmin(DeleteActionMixin, admin.ModelAdmin):
     list_display = [
         "profile_name", "topic", "vps", "is_active",
         "videos_today", "daily_video_limit", "capacity_status",
-        "last_upload_at", "created_at",
+        "last_upload_at", "created_at", "delete_button"
     ]
     list_filter = ["is_active", "topic", "vps"]
     search_fields = ["profile_name"]
@@ -84,8 +106,8 @@ class TikTokProfileAdmin(admin.ModelAdmin):
 # ── Gemini API Key ─────────────────────────────────────────────────────
 
 @admin.register(GeminiAPIKey)
-class GeminiAPIKeyAdmin(admin.ModelAdmin):
-    list_display = ["masked_key", "is_active", "usage_display", "last_used_at", "created_at"]
+class GeminiAPIKeyAdmin(DeleteActionMixin, admin.ModelAdmin):
+    list_display = ["masked_key", "is_active", "usage_display", "last_used_at", "created_at", "delete_button"]
     list_filter = ["is_active"]
     list_editable = ["is_active"]
     search_fields = ["api_key"]
@@ -114,10 +136,10 @@ class GeminiAPIKeyAdmin(admin.ModelAdmin):
 # ── Video ──────────────────────────────────────────────────────────────
 
 @admin.register(Video)
-class VideoAdmin(admin.ModelAdmin):
+class VideoAdmin(DeleteActionMixin, admin.ModelAdmin):
     list_display = [
         "video_id", "youtube_channel", "status_badge",
-        "uploaded_to_profile", "retry_count", "created_at",
+        "uploaded_to_profile", "retry_count", "created_at", "delete_button"
     ]
     list_filter = ["status", "youtube_channel__topic", "created_at"]
     search_fields = ["video_id", "youtube_channel__name"]

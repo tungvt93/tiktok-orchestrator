@@ -8,7 +8,13 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
 app = Celery("tiktok_orchestrator")
 app.config_from_object("django.conf:settings", namespace="CELERY")
-app.autodiscover_tasks(["apps.core.tasks"])
+app.autodiscover_tasks()
+
+app.conf.imports = (
+    "apps.core.tasks.distribute",
+    "apps.core.tasks.reset",
+    "apps.core.tasks.split",
+)
 
 # Periodic tasks (Celery Beat)
 app.conf.beat_schedule = {

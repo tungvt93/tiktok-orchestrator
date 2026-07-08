@@ -65,26 +65,48 @@ def cut_video_clips(
             idx, start_s, end_s, orig_duration, speed, out_filename,
         )
 
-        # Primary FFmpeg command with speed-up
+        # Create title text file for FFmpeg drawtext
+        import textwrap
+        lines = textwrap.wrap(title, width=22)
+        max_len = max((len(line) for line in lines), default=0)
+        centered_lines = [line.center(max_len) for line in lines]
+        wrapped_text = "\n".join(centered_lines)
+        
+        text_filepath = (session_dir / f"title_{idx}.txt").absolute()
+        with open(text_filepath, "w", encoding="utf-8") as f:
+            f.write(wrapped_text)
+            
+        # Escape path for FFmpeg textfile parameter
+        text_filepath_ffmpeg = text_filepath.as_posix().replace(":", "\\:")
+
+        target_width = 1080
+        target_height = 1920
+
+        filter_complex = (
+            f"[0:v]setpts=PTS/{speed},"
+            f"hflip,eq=contrast=1.1:saturation=1.4:brightness=0.06,colorbalance=rm=0.08:gm=0.08:bm=-0.15[v_base]; "
+            f"[v_base]split=2[v_bg][v_fg]; "
+            f"[v_bg]scale={target_width}:{target_height}:force_original_aspect_ratio=increase,"
+            f"crop={target_width}:{target_height},boxblur=luma_radius=25:luma_power=2[bg]; "
+            f"[v_fg]scale={target_width}:-1,scale=iw*1.5:ih*1.5[fg]; "
+            f"[bg][fg]overlay=(W-w)/2:(H-h)/2[vid_merged]; "
+            f"[vid_merged]drawtext=textfile='{text_filepath_ffmpeg}':fontcolor=#22f158:fontsize=80:line_spacing=15:x=(w-text_w)/2:y=200[outv]; "
+            f"[0:a]atempo={speed}[outa]"
+        )
+
         cmd = [
             "ffmpeg", "-y",
             "-ss", str(start_s),
             "-to", str(end_s),
             "-i", video_path,
-        ]
-
-        if speed != 1.0:
-            cmd.extend([
-                "-vf", f"setpts=PTS/{speed}",
-                "-af", f"atempo={speed}",
-            ])
-
-        cmd.extend([
+            "-filter_complex", filter_complex,
+            "-map", "[outv]",
+            "-map", "[outa]",
             "-c:v", "libx264",
-            "-c:a", "aac",
             "-preset", "fast",
+            "-c:a", "aac",
             out_filepath,
-        ])
+        ]
 
         try:
             subprocess.run(

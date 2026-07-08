@@ -3,6 +3,7 @@ import json
 import logging
 import random
 import time
+import subprocess
 from typing import Any, Dict, List
 
 from google import genai
@@ -40,13 +41,25 @@ def _parse_time_to_seconds(value: Any) -> float:
             return 0.0
     return 0.0
 
+def get_video_duration(input_file: str) -> float:
+    cmd = [
+        'ffprobe', '-v', 'error', '-show_entries', 'format=duration', 
+        '-of', 'default=noprint_wrappers=1:nokey=1', input_file
+    ]
+    try:
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+        return float(result.stdout.strip())
+    except Exception as e:
+        logger.warning("ffprobe failed to get duration: %s", e)
+        return 180.0
+
 
 def analyze_video_for_highlights(
     video_path: str,
     api_key: str,
-    num_clips: int = 5,
+    num_clips: int | None = None,
     min_clip_duration: float = 8.0,
-    max_clip_duration: float = 10.0,
+    max_clip_duration: float = 20.0,
 ) -> List[Dict[str, Any]]:
     """
     Upload video to Gemini Files API and request highlight timestamps.
@@ -86,21 +99,30 @@ def analyze_video_for_highlights(
 
     logger.info("Video ACTIVE. Sending analysis prompt (duration %ss-%ss)...", min_clip_duration, max_clip_duration)
 
+    if num_clips is None:
+        total_duration = get_video_duration(video_path)
+        # 1 clip per 60 seconds, min 1, max 10
+        num_clips = max(1, min(10, int(total_duration / 60)))
+        logger.info("Video duration is %.1fs. Dynamically requesting %d clips.", total_duration, num_clips)
+
     duration_instruction = (
         f"2. Clip duration (end_seconds - start_seconds) MUST be between "
-        f"{min_clip_duration}s and {max_clip_duration}s "
-        f"(randomly within {min_clip_duration}s-{max_clip_duration}s range)."
+        f"{min_clip_duration}s and {max_clip_duration}s."
     )
 
     prompt = f"""
-Analyze this video carefully and select exactly {num_clips} highlight moments
-(interesting, dramatic, or viral-trending moments).
+Analyze this video carefully and select exactly {num_clips} highlight moments that have the highest potential to go viral on short-form video platforms (TikTok, Reels, Shorts).
 
 MANDATORY REQUIREMENTS:
-1. NO OVERLAP in content or time: [start_seconds, end_seconds] ranges across all
-   clips must be completely separate — absolutely no overlap.
+1. NO OVERLAP in content or time: The [start_seconds, end_seconds] ranges across all clips must be completely separate — absolutely no overlap.
 {duration_instruction}
 3. Return results in standard JSON format.
+
+VIRAL SELECTION CRITERIA (Prioritize segments with these elements):
+- Strong Hook: The first 2-3 seconds of each clip must have high visual or auditory impact (e.g., a sudden action, a funny expression, a shocking statement, or an abrupt change) to grab immediate attention.
+- Emotional Peaks: Moments that trigger strong emotional responses, such as high excitement, intense drama, genuine laughter, suspense, or extreme cuteness/satisfaction.
+- Clear Context: Each clip should tell a mini-story or present a complete, understandable thought/action within its timeframe, so viewers don't feel confused.
+- Sound & Visual Synchronization: Prefer segments where the background music drops, a loud sound effect occurs, or there is an energetic peak in dialogue/action.
 """
 
     models_to_try = ["gemini-2.5-flash", "gemini-1.5-flash"]
