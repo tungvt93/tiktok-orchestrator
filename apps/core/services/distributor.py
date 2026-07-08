@@ -1,10 +1,12 @@
 """Distribution logic — selects the best TikTok profile for a video by topic."""
 from datetime import timedelta
 
+from django.conf import settings
 from django.db.models import F
 from django.utils import timezone
 
 from apps.core.models.tiktok_profile import TikTokProfile
+from apps.core.services.config import get_config
 
 
 def find_best_profile(topic, exclude_profile_ids=None):
@@ -16,7 +18,7 @@ def find_best_profile(topic, exclude_profile_ids=None):
     2. videos_today < daily_video_limit (has remaining capacity)
     3. Ordered by: videos_today ASC, last_upload_at ASC NULLS FIRST
     4. First profile with: last_upload_at IS NULL
-       OR (now - last_upload_at) >= 10 minutes
+       OR (now - last_upload_at) >= upload_cooldown_minutes
     5. Exclude previously failed profile IDs (retry with different profile)
 
     Args:
@@ -43,7 +45,8 @@ def find_best_profile(topic, exclude_profile_ids=None):
         F("last_upload_at").asc(nulls_first=True),
     )
 
-    cutoff = timezone.now() - timedelta(minutes=10)
+    cooldown_minutes = int(get_config("upload_cooldown_minutes", settings.UPLOAD_COOLDOWN_MINUTES))
+    cutoff = timezone.now() - timedelta(minutes=cooldown_minutes)
     today = timezone.now().date()
 
     for profile in candidates:
@@ -52,7 +55,7 @@ def find_best_profile(topic, exclude_profile_ids=None):
             profile.videos_today = 0
             profile.save(update_fields=["videos_today"])
 
-        # Check 10-minute gap between uploads
+        # Check configurable cooldown gap between uploads
         if profile.last_upload_at is None or profile.last_upload_at <= cutoff:
             return profile
 

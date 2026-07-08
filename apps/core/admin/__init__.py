@@ -1,7 +1,7 @@
 """Django Admin configuration for all core models."""
 from django.contrib import admin
 
-from apps.core.models import Topic, VPS, YouTubeChannel, TikTokProfile, Video, GeminiAPIKey
+from apps.core.models import Topic, VPS, YouTubeChannel, TikTokProfile, Video, GeminiAPIKey, SystemConfig
 from django.utils.html import format_html
 from django.urls import reverse
 from django.contrib.admin.actions import delete_selected
@@ -173,3 +173,12 @@ class VideoAdmin(DeleteActionMixin, admin.ModelAdmin):
             count += 1
 
         self.message_user(request, f"Re-enqueued {count} video(s) for distribution.")
+
+
+# ── System Config ────────────────────────────────────────────────────────
+
+@admin.register(SystemConfig)
+class SystemConfigAdmin(DeleteActionMixin, admin.ModelAdmin):
+    list_display = ["key", "value", "created_at", "delete_button"]
+    search_fields = ["key"]
+    list_editable = ["value"]

@@ -112,6 +112,9 @@ R2_SECRET_ACCESS_KEY = config("R2_SECRET_ACCESS_KEY", default="")
 R2_BUCKET_NAME = config("R2_BUCKET_NAME", default="tiktok-clips")
 R2_PUBLIC_DOMAIN = config("R2_PUBLIC_DOMAIN", default="")
 
+# Application Settings
+UPLOAD_COOLDOWN_MINUTES = config("UPLOAD_COOLDOWN_MINUTES", default=10, cast=int)
+
 # REST Framework
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": [
