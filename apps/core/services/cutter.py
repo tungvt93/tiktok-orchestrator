@@ -65,9 +65,25 @@ def cut_video_clips(
             idx, start_s, end_s, orig_duration, speed, out_filename,
         )
 
+        # Dynamically adjust wrapping and font size based on title length to prevent overflow
+        # and ensure reasonable line spacing
+        title_len = len(title)
+        if title_len > 50:
+            wrap_width = 30
+            fontsize = 45
+            line_spacing = 6
+        elif title_len > 30:
+            wrap_width = 26
+            fontsize = 55
+            line_spacing = 8
+        else:
+            wrap_width = 20
+            fontsize = 75
+            line_spacing = 10
+
         # Create title text file for FFmpeg drawtext
         import textwrap
-        lines = textwrap.wrap(title, width=22)
+        lines = textwrap.wrap(title, width=wrap_width)
         max_len = max((len(line) for line in lines), default=0)
         centered_lines = [line.center(max_len) for line in lines]
         wrapped_text = "\n".join(centered_lines)
@@ -90,7 +106,7 @@ def cut_video_clips(
             f"crop={target_width}:{target_height},boxblur=luma_radius=25:luma_power=2[bg]; "
             f"[v_fg]scale={target_width}:-1,scale=iw*1.5:ih*1.5[fg]; "
             f"[bg][fg]overlay=(W-w)/2:(H-h)/2[vid_merged]; "
-            f"[vid_merged]drawtext=textfile='{text_filepath_ffmpeg}':fontcolor=#22f158:fontsize=80:line_spacing=15:x=(w-text_w)/2:y=200[outv]; "
+            f"[vid_merged]drawtext=textfile='{text_filepath_ffmpeg}':fontcolor=#22f158:fontsize={fontsize}:line_spacing={line_spacing}:x=(w-text_w)/2:y=200[outv]; "
             f"[0:a]atempo={speed}[outa]"
         )
 

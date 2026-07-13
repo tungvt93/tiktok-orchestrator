@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 DOWNLOAD_DIR = Path(getattr(settings, "VIDEO_DOWNLOAD_DIR", "/tmp/video_downloads"))
 
 
-def download_video(url: str, output_dir: Path | None = None) -> str:
+def download_video(url: str, output_dir: Path | None = None) -> tuple[str, str]:
     """
     Download a video from a YouTube URL using yt-dlp.
 
@@ -22,7 +22,7 @@ def download_video(url: str, output_dir: Path | None = None) -> str:
         output_dir: Optional custom output directory.
 
     Returns:
-        Absolute path to the downloaded MP4 file.
+        A tuple of (absolute path to the downloaded MP4 file, video title).
 
     Raises:
         RuntimeError: if download fails.
@@ -39,6 +39,13 @@ def download_video(url: str, output_dir: Path | None = None) -> str:
         "quiet": True,
         "no_warnings": True,
         "merge_output_format": "mp4",
+        # Prevent infinite hang: abort if no data received for 30s
+        "socket_timeout": 30,
+        # Retry on network errors instead of hanging
+        "retries": 3,
+        "fragment_retries": 3,
+        # Natively skip live and was_live videos at download level
+        "match_filter": yt_dlp.utils.match_filter_func("!is_live & !was_live"),
     }
 
     logger.info("Downloading video: %s", url)
@@ -46,6 +53,7 @@ def download_video(url: str, output_dir: Path | None = None) -> str:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
             filename = ydl.prepare_filename(info)
+            title = info.get("title", "Video")
 
             # Handle extension change during merge
             base, _ = os.path.splitext(filename)
@@ -54,6 +62,6 @@ def download_video(url: str, output_dir: Path | None = None) -> str:
                 filename = expected_mp4
 
         logger.info("Download complete: %s", filename)
-        return filename
+        return filename, title
     except yt_dlp.utils.DownloadError as e:
         raise RuntimeError(f"Download failed for {url}: {e}") from e

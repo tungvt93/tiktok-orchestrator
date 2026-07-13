@@ -21,6 +21,7 @@ class TikTokProfile(models.Model):
     videos_today = models.IntegerField(default=0)
     last_upload_at = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
+    is_beta = models.BooleanField(default=False)
     notes = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

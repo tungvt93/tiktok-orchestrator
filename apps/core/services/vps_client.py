@@ -34,6 +34,12 @@ def upload_to_vps(vps, profile_name, video_url):
     except requests.ConnectionError:
         return False, f"Connection error to VPS {vps.name} ({vps.api_endpoint})"
     except requests.HTTPError as e:
-        return False, f"HTTP {response.status_code} from VPS {vps.name}: {e}"
+        # Include detailed response body from VPS to ease debugging
+        resp_details = ""
+        try:
+            resp_details = f" | Details: {response.text}"
+        except Exception:
+            pass
+        return False, f"HTTP {response.status_code} from VPS {vps.name}: {e}{resp_details}"
     except requests.RequestException as e:
         return False, f"Request failed to VPS {vps.name}: {e}"

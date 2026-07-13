@@ -8,6 +8,7 @@ class Topic(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255, unique=True)
     slug = models.SlugField(max_length=255, unique=True)
+    bypass_cooldown = models.BooleanField(default=False, verbose_name="Bỏ qua thời gian chờ (cooldown)")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

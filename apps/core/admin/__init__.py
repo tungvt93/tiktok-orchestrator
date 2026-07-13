@@ -30,7 +30,9 @@ class DeleteActionMixin:
 
 @admin.register(Topic)
 class TopicAdmin(DeleteActionMixin, admin.ModelAdmin):
-    list_display = ["name", "slug", "channel_count", "profile_count", "created_at", "delete_button"]
+    list_per_page = 20
+    list_display = ["name", "slug", "bypass_cooldown", "channel_count", "profile_count", "created_at", "delete_button"]
+    list_editable = ["bypass_cooldown"]
     search_fields = ["name", "slug"]
     prepopulated_fields = {"slug": ("name",)}
 
@@ -47,6 +49,7 @@ class TopicAdmin(DeleteActionMixin, admin.ModelAdmin):
 
 @admin.register(YouTubeChannel)
 class YouTubeChannelAdmin(DeleteActionMixin, admin.ModelAdmin):
+    list_per_page = 20
     list_display = ["name", "channel_id", "topic", "is_active", "video_count", "created_at", "delete_button"]
     list_filter = ["is_active", "topic"]
     search_fields = ["name", "channel_id"]
@@ -62,6 +65,7 @@ class YouTubeChannelAdmin(DeleteActionMixin, admin.ModelAdmin):
 
 @admin.register(VPS)
 class VPSAdmin(DeleteActionMixin, admin.ModelAdmin):
+    list_per_page = 20
     list_display = ["name", "host", "is_active", "profile_count", "created_at", "delete_button"]
     list_filter = ["is_active"]
     search_fields = ["name", "host", "api_endpoint"]
@@ -76,14 +80,15 @@ class VPSAdmin(DeleteActionMixin, admin.ModelAdmin):
 
 @admin.register(TikTokProfile)
 class TikTokProfileAdmin(DeleteActionMixin, admin.ModelAdmin):
+    list_per_page = 20
     list_display = [
-        "profile_name", "topic", "vps", "is_active",
+        "profile_name", "topic", "vps", "is_active", "is_beta",
         "videos_today", "daily_video_limit", "capacity_status",
         "last_upload_at", "created_at", "delete_button"
     ]
-    list_filter = ["is_active", "topic", "vps"]
+    list_filter = ["is_active", "is_beta", "topic", "vps"]
     search_fields = ["profile_name"]
-    list_editable = ["is_active", "daily_video_limit"]
+    list_editable = ["is_active", "is_beta", "daily_video_limit"]
     autocomplete_fields = ["topic", "vps"]
     actions = ["reset_daily_counters"]
 
@@ -107,6 +112,7 @@ class TikTokProfileAdmin(DeleteActionMixin, admin.ModelAdmin):
 
 @admin.register(GeminiAPIKey)
 class GeminiAPIKeyAdmin(DeleteActionMixin, admin.ModelAdmin):
+    list_per_page = 20
     list_display = ["masked_key", "is_active", "usage_display", "last_used_at", "created_at", "delete_button"]
     list_filter = ["is_active"]
     list_editable = ["is_active"]
@@ -137,6 +143,7 @@ class GeminiAPIKeyAdmin(DeleteActionMixin, admin.ModelAdmin):
 
 @admin.register(Video)
 class VideoAdmin(DeleteActionMixin, admin.ModelAdmin):
+    list_per_page = 20
     list_display = [
         "video_id", "youtube_channel", "status_badge",
         "uploaded_to_profile", "retry_count", "created_at", "delete_button"
@@ -179,6 +186,7 @@ class VideoAdmin(DeleteActionMixin, admin.ModelAdmin):
 
 @admin.register(SystemConfig)
 class SystemConfigAdmin(DeleteActionMixin, admin.ModelAdmin):
+    list_per_page = 20
     list_display = ["key", "value", "created_at", "delete_button"]
     search_fields = ["key"]
     list_editable = ["value"]

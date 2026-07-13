@@ -43,6 +43,32 @@ def webhook_video(request):
         # Fallback to payload if network fails
         is_short = data.get("is_short", False)
 
+    # Get or create YouTubeChannel
+    # Auto-assign the first available Topic (or default to None if no Topic exists)
+    from apps.core.models.topic import Topic
+    default_topic = Topic.objects.first()
+
+    channel, _ = YouTubeChannel.objects.get_or_create(
+        channel_id=channel_id,
+        defaults={
+            "name": channel_id,
+            "channel_url": f"https://youtube.com/channel/{channel_id}",
+            "topic": default_topic,
+        },
+    )
+
+    # For non-short videos, check if there is an active TikTok profile corresponding to this channel's topic and is_beta=True
+    if not is_short:
+        from apps.core.models.tiktok_profile import TikTokProfile
+        if not channel.topic or not TikTokProfile.objects.filter(topic=channel.topic, is_active=True, is_beta=True).exists():
+            return Response(
+                {
+                    "status": "skipped",
+                    "message": "No active beta TikTok profile found for channel topic, skipping processing",
+                },
+                status=status.HTTP_200_OK,
+            )
+
     # Build video_url: use explicit URL if provided, otherwise construct from type
     video_url = data.get("video_url", "")
     if not video_url:
@@ -50,15 +76,6 @@ def webhook_video(request):
             video_url = f"https://www.youtube.com/shorts/{video_id}"
         else:
             video_url = f"https://www.youtube.com/watch?v={video_id}"
-
-    # Get or create YouTubeChannel
-    channel, _ = YouTubeChannel.objects.get_or_create(
-        channel_id=channel_id,
-        defaults={
-            "name": channel_id,
-            "channel_url": f"https://youtube.com/channel/{channel_id}",
-        },
-    )
 
     # Create Video (idempotent via UNIQUE constraint on video_id)
     try:

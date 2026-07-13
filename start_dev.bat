@@ -20,7 +20,7 @@ echo.
 echo ==================================================
 echo 3. Starting Celery Worker (Local) in a new window...
 echo ==================================================
-start "Celery Worker (Local)" cmd /k ".\venv\Scripts\activate && celery -A config.celery worker --loglevel=info --pool=solo"
+start "Celery Worker (Local - Watchdog)" cmd /k "cd /d %~dp0 && watchdog_worker.bat"
 
 echo.
 echo ==================================================
