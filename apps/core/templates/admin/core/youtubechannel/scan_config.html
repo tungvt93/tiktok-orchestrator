@@ -1,0 +1,35 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<form action="." method="post">
+    {% csrf_token %}
+    <p>Bạn đã chọn các kênh YouTube sau để quét:</p>
+    <ul style="margin-bottom: 25px; line-height: 1.6;">
+        {% for item in channels_with_capacity %}
+            <li>
+                <strong>{{ item.instance.name }}</strong> ({{ item.instance.channel_id }}) <br>
+                <span style="color:#666;">Chủ đề: {{ item.topic_name }} | Sức chứa TikTok còn trống hôm nay: </span>
+                <strong style="color: {% if item.remaining_capacity > 0 %}#268bd2{% else %}#ba2121{% endif %};">
+                    {{ item.remaining_capacity }} video
+                </strong>
+            </li>
+        {% endfor %}
+    </ul>
+
+    <div class="form-row" style="margin-bottom: 20px;">
+        <label for="max_videos" style="display:inline-block; width:220px; font-weight:bold;">Số video tối đa mỗi kênh:</label>
+        <input type="number" name="max_videos" id="max_videos" value="{{ default_max_videos }}" min="1" required style="padding:5px; width:100px;">
+        <p class="help" style="margin-left:220px; margin-top:5px; color:#666;">Số lượng video mới nhất cần quét trên mỗi kênh (mặc định gợi ý theo sức chứa tối đa của profile tương ứng).</p>
+    </div>
+
+    <div class="form-row" style="margin-bottom: 20px;">
+        <label for="min_views" style="display:inline-block; width:220px; font-weight:bold;">Lượt xem tối thiểu (Views):</label>
+        <input type="number" name="min_views" id="min_views" value="10000" min="0" required style="padding:5px; width:150px;">
+        <p class="help" style="margin-left:220px; margin-top:5px; color:#666;">Chỉ tải và xử lý các video có số lượt xem lớn hơn hoặc bằng con số này.</p>
+    </div>
+
+    <div class="submit-row" style="margin-top: 30px; padding:15px 0; border-top:1px solid #ccc;">
+        <input type="submit" value="Bắt đầu xử lý" class="default" style="background:#417690; color:white; padding:10px 20px; border:none; cursor:pointer; font-weight:bold; border-radius:4px;">
+        <a href="../" class="closelink" style="margin-left:20px; color:#ba2121; text-decoration:none; font-weight:bold;">Hủy bỏ</a>
+    </div>
+</form>
+{% endblock %}

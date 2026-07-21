@@ -55,10 +55,89 @@ class YouTubeChannelAdmin(DeleteActionMixin, admin.ModelAdmin):
     search_fields = ["name", "channel_id"]
     list_editable = ["topic", "is_active"]
     autocomplete_fields = ["topic"]
+    actions = ["trigger_manual_scan"]
 
     @admin.display(description="Videos")
     def video_count(self, obj):
         return obj.videos.count()
+
+    @admin.action(description="📥 Quét và Phân phối Video chọn lọc")
+    def trigger_manual_scan(self, request, queryset):
+        from django.http import HttpResponseRedirect
+        selected_ids = list(queryset.values_list("id", flat=True))
+        request.session["selected_channel_ids"] = [str(x) for x in selected_ids]
+        return HttpResponseRedirect("scan-config/")
+
+    def get_urls(self):
+        from django.urls import path
+        urls = super().get_urls()
+        custom_urls = [
+            path("scan-config/", self.admin_site.admin_view(self.scan_config_view), name="youtubechannel_scan_config"),
+        ]
+        return custom_urls + urls
+
+    def scan_config_view(self, request):
+        from django.http import HttpResponseRedirect
+        from django.shortcuts import render
+        from django.contrib import messages
+        from apps.core.tasks.fetch_videos import fetch_and_process_channel_videos_manual
+
+        selected_ids = request.session.get("selected_channel_ids", [])
+        if not selected_ids:
+            self.message_user(request, "Vui lòng chọn ít nhất một kênh YouTube.", level=messages.WARNING)
+            return HttpResponseRedirect("../")
+
+        channels = YouTubeChannel.objects.filter(id__in=selected_ids)
+
+        # Tính toán dung lượng trống cho từng kênh dựa trên Topic và các Profile tương ứng
+        channels_with_capacity = []
+        max_remaining_capacity = 0
+        
+        for channel in channels:
+            remaining = 0
+            if channel.topic:
+                profiles = channel.topic.tiktok_profiles.filter(is_active=True, vps__is_active=True)
+                remaining = sum(max(0, p.daily_video_limit - p.videos_today) for p in profiles)
+            
+            channels_with_capacity.append({
+                "instance": channel,
+                "remaining_capacity": remaining,
+                "topic_name": channel.topic.name if channel.topic else "Chưa gán chủ đề",
+            })
+            if remaining > max_remaining_capacity:
+                max_remaining_capacity = remaining
+
+        # Giá trị gợi ý mặc định là dung lượng trống lớn nhất tìm thấy (hoặc tối thiểu là 5 nếu tất cả bằng 0)
+        default_max_videos = max_remaining_capacity if max_remaining_capacity > 0 else 5
+
+        if request.method == "POST":
+            max_videos = int(request.POST.get("max_videos", 5))
+            min_views = int(request.POST.get("min_views", 0))
+
+            for channel in channels:
+                fetch_and_process_channel_videos_manual.delay(
+                    str(channel.id),
+                    max_videos,
+                    min_views
+                )
+
+            self.message_user(
+                request,
+                f"Đã kích hoạt quét thành công cho {channels.count()} kênh. Tiến trình đang chạy ngầm.",
+                level=messages.SUCCESS
+            )
+            if "selected_channel_ids" in request.session:
+                del request.session["selected_channel_ids"]
+            return HttpResponseRedirect("../")
+
+        context = {
+            **self.admin_site.each_context(request),
+            "title": "Cấu hình quét và lọc video YouTube",
+            "channels_with_capacity": channels_with_capacity,
+            "default_max_videos": default_max_videos,
+            "opts": self.model._meta,
+        }
+        return render(request, "admin/core/youtubechannel/scan_config.html", context)
 
 
 # ── VPS ────────────────────────────────────────────────────────────────

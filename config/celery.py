@@ -14,6 +14,7 @@ app.conf.imports = (
     "apps.core.tasks.distribute",
     "apps.core.tasks.reset",
     "apps.core.tasks.split",
+    "apps.core.tasks.fetch_videos",
 )
 
 # Periodic tasks (Celery Beat)
